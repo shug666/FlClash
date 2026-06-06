@@ -30,6 +30,7 @@ jobs:
             xz-utils \
             zip \
             sudo \
+            jq \
             ninja-build \
             libgtk-3-dev \
             libayatana-appindicator3-dev \
