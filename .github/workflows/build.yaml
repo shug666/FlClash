@@ -74,7 +74,7 @@ jobs:
 
       - name: Build Linux .deb package
         run: |
-          dart setup.dart linux --targets deb --env pre
+          dart setup.dart linux --targets deb --env pre --verbose
         env:
           PUB_HOSTED_URL: https://pub.flutter-io.cn
           FLUTTER_STORAGE_BASE_URL: https://storage.flutter-io.cn
