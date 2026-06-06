@@ -28,7 +28,7 @@ class Window {
     }
     await windowManager.ensureInitialized();
     // kDebugMode ? Size(680, 580) :
-    WindowOptions windowOptions = WindowOptions(
+    final WindowOptions windowOptions = WindowOptions(
       size: props.size,
       minimumSize: const Size(380, 400),
     );
@@ -84,6 +84,9 @@ class Window {
 
   Future<void> close() async {
     await windowManager.close();
+  }
+
+  void forceExit() {
     exit(0);
   }
 
