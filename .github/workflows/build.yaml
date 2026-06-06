@@ -7,22 +7,29 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  DEBIAN_FRONTEND: noninteractive
+  TZ: Etc/UTC
+
 jobs:
   build-linux-deb:
     runs-on: ubuntu-22.04
+    container:
+      image: ubuntu:20.04
     timeout-minutes: 120
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Install system dependencies
+      - name: Install base tools
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y \
+          apt-get update -y
+          apt-get install -y \
+            git \
+            curl \
+            wget \
+            unzip \
+            xz-utils \
+            zip \
+            sudo \
             ninja-build \
             libgtk-3-dev \
             libayatana-appindicator3-dev \
@@ -30,7 +37,17 @@ jobs:
             locate \
             rpm \
             patchelf \
-            libfuse2
+            libfuse2 \
+            clang \
+            cmake \
+            pkg-config \
+            libglu1-mesa
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v5
