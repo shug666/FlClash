@@ -7,30 +7,22 @@ on:
     branches: [main]
   workflow_dispatch:
 
-env:
-  DEBIAN_FRONTEND: noninteractive
-  TZ: Etc/UTC
-
 jobs:
   build-linux-deb:
     runs-on: ubuntu-22.04
-    container:
-      image: ubuntu:20.04
     timeout-minutes: 120
 
     steps:
-      - name: Install base tools
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install system dependencies
         run: |
-          apt-get update -y
-          apt-get install -y \
-            git \
-            curl \
-            wget \
-            unzip \
-            xz-utils \
-            zip \
-            sudo \
-            jq \
+          sudo apt-get update -y
+          sudo apt-get install -y \
             ninja-build \
             libgtk-3-dev \
             libayatana-appindicator3-dev \
@@ -38,20 +30,7 @@ jobs:
             locate \
             rpm \
             patchelf \
-            libfuse2 \
-            clang \
-            cmake \
-            pkg-config \
-            libglu1-mesa
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Fix git safe directory for all repos
-        run: git config --global --add safe.directory '*'
+            libfuse2
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -60,7 +39,12 @@ jobs:
           cache-dependency-path: core/go.sum
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source "$HOME/.cargo/env"
+          rustup --version
+          cargo --version
+          rustc --version
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -78,14 +62,9 @@ jobs:
         run: |
           dart pub global activate -s path plugins/flutter_distributor/packages/flutter_distributor
 
-      - name: Test flutter build linux directly
-        run: |
-          flutter build linux --verbose 2>&1 | tail -100
-        env:
-          GOFLAGS: -buildvcs=false
-
       - name: Build Linux .deb package
         run: |
+          source "$HOME/.cargo/env"
           dart setup.dart linux --targets deb --env pre
         env:
           GOFLAGS: -buildvcs=false
