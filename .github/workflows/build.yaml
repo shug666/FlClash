@@ -93,9 +93,7 @@ jobs:
 
       - name: Tidy Go modules
         run: |
-          cd core/Clash.Meta
-          go mod tidy
-          cd ..
+          cd core
           go mod tidy
 
       - name: Setup Flutter
