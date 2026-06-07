@@ -64,24 +64,20 @@ jobs:
       - name: Setup Rust (system-wide)
         run: |
           export DEBIAN_FRONTEND=noninteractive
-          # Install Rust to /opt/rust so it's available system-wide
           export RUSTUP_HOME=/opt/rust
           export CARGO_HOME=/opt/rust
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-          # Create symlinks so all users/subprocesses can find the tools
           ln -sf /opt/rust/bin/rustup /usr/local/bin/rustup
           ln -sf /opt/rust/bin/cargo /usr/local/bin/cargo
           ln -sf /opt/rust/bin/rustc /usr/local/bin/rustc
           ln -sf /opt/rust/bin/rust-gdb /usr/local/bin/rust-gdb 2>/dev/null || true
           ln -sf /opt/rust/bin/rust-lldb /usr/local/bin/rust-lldb 2>/dev/null || true
-          # Also link any other binaries in the rust bin dir
           for bin in /opt/rust/bin/*; do
             name=$(basename "$bin")
             if [ ! -e "/usr/local/bin/$name" ]; then
               ln -sf "$bin" "/usr/local/bin/$name" 2>/dev/null || true
             fi
           done
-          # Verify
           echo "RUSTUP_HOME=$RUSTUP_HOME"
           echo "CARGO_HOME=$CARGO_HOME"
           rustup --version
@@ -90,11 +86,6 @@ jobs:
         env:
           RUSTUP_HOME: /opt/rust
           CARGO_HOME: /opt/rust
-
-      - name: Tidy Go modules
-        run: |
-          cd core
-          go mod tidy
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
