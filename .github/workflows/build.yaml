@@ -91,6 +91,13 @@ jobs:
           RUSTUP_HOME: /opt/rust
           CARGO_HOME: /opt/rust
 
+      - name: Tidy Go modules
+        run: |
+          cd core/Clash.Meta
+          go mod tidy
+          cd ..
+          go mod tidy
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
