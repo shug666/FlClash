@@ -10,19 +10,29 @@ on:
 jobs:
   build-linux-deb:
     runs-on: ubuntu-22.04
-    timeout-minutes: 120
+    container:
+      image: ubuntu:20.04
+    timeout-minutes: 180
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Install system dependencies
+      - name: Install base tools and configure locale
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y \
+          export DEBIAN_FRONTEND=noninteractive
+          export TZ=Etc/UTC
+          ln -snf /usr/share/zoneinfo/Etc/UTC /etc/localtime && echo "Etc/UTC" > /etc/timezone
+          apt-get update -y
+          apt-get install -y \
+            software-properties-common \
+            apt-transport-https \
+            ca-certificates \
+            gnupg \
+            curl \
+            wget \
+            git \
+            jq \
+            unzip \
+            xz-utils \
+            zip \
             ninja-build \
             libgtk-3-dev \
             libayatana-appindicator3-dev \
@@ -30,7 +40,20 @@ jobs:
             locate \
             rpm \
             patchelf \
-            libfuse2
+            libfuse2 \
+            build-essential \
+            cmake \
+            pkg-config \
+            clang
+
+      - name: Configure git safe directory
+        run: git config --global --add safe.directory '*'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -38,13 +61,35 @@ jobs:
           go-version: '1.22'
           cache-dependency-path: core/go.sum
 
-      - name: Setup Rust
+      - name: Setup Rust (system-wide)
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          source "$HOME/.cargo/env"
+          export DEBIAN_FRONTEND=noninteractive
+          # Install Rust to /opt/rust so it's available system-wide
+          export RUSTUP_HOME=/opt/rust
+          export CARGO_HOME=/opt/rust
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+          # Create symlinks so all users/subprocesses can find the tools
+          ln -sf /opt/rust/bin/rustup /usr/local/bin/rustup
+          ln -sf /opt/rust/bin/cargo /usr/local/bin/cargo
+          ln -sf /opt/rust/bin/rustc /usr/local/bin/rustc
+          ln -sf /opt/rust/bin/rust-gdb /usr/local/bin/rust-gdb 2>/dev/null || true
+          ln -sf /opt/rust/bin/rust-lldb /usr/local/bin/rust-lldb 2>/dev/null || true
+          # Also link any other binaries in the rust bin dir
+          for bin in /opt/rust/bin/*; do
+            name=$(basename "$bin")
+            if [ ! -e "/usr/local/bin/$name" ]; then
+              ln -sf "$bin" "/usr/local/bin/$name" 2>/dev/null || true
+            fi
+          done
+          # Verify
+          echo "RUSTUP_HOME=$RUSTUP_HOME"
+          echo "CARGO_HOME=$CARGO_HOME"
           rustup --version
           cargo --version
           rustc --version
+        env:
+          RUSTUP_HOME: /opt/rust
+          CARGO_HOME: /opt/rust
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -64,10 +109,14 @@ jobs:
 
       - name: Build Linux .deb package
         run: |
-          source "$HOME/.cargo/env"
+          export RUSTUP_HOME=/opt/rust
+          export CARGO_HOME=/opt/rust
+          export PATH="/opt/rust/bin:$PATH"
           dart setup.dart linux --targets deb --env pre
         env:
           GOFLAGS: -buildvcs=false
+          RUSTUP_HOME: /opt/rust
+          CARGO_HOME: /opt/rust
 
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
