@@ -1,0 +1,65 @@
+name: Build Windows .exe
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-2022
+    timeout-minutes: 180
+
+    steps:
+      - name: Configure git line endings
+        run: git config --global core.autocrlf false
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: core/go.sum
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'master'
+          cache: true
+
+      - name: Flutter doctor
+        run: flutter doctor -v
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Activate flutter_distributor
+        run: dart pub global activate -s path plugins/flutter_distributor/packages/flutter_distributor
+
+      - name: Build Windows .exe package
+        run: dart setup.dart windows --targets exe --env pre
+        env:
+          GOFLAGS: -buildvcs=false
+
+      - name: Upload .exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlClash-windows-amd64-setup
+          path: dist/**/**/*.exe
+          if-no-files-found: error
+
+      - name: List build output
+        run: Get-ChildItem -Path dist -Recurse -Filter *.exe | Select-Object FullName
